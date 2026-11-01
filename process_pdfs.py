@@ -12,23 +12,28 @@ from llama_index.core import Document, StorageContext, VectorStoreIndex
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from tqdm import tqdm
 
-from config import CHROMA_PATH, COLLECTION, PDF_DIR, Settings
+from config import CHROMA_PATH, COLLECTION, PDF_DIR
 
 log = logging.getLogger("index")
 
 
-def extract_pages(pdf_path: Path) -> list[Document]:
-    """Page-level text. OCR only when the PDF has no text layer."""
+def _pages(pdf_path: Path, name: str) -> list[Document]:
+    """Page text from one PDF. Empty list if no text layer."""
     pages: list[Document] = []
     doc = pymupdf.open(pdf_path)
     try:
         for i, page in enumerate(doc, 1):
             text = page.get_text().strip()
             if text:
-                pages.append(Document(text=text, metadata={"file_name": pdf_path.name, "page": i}))
+                pages.append(Document(text=text, metadata={"file_name": name, "page": i}))
     finally:
         doc.close()
+    return pages
 
+
+def extract_pages(pdf_path: Path) -> list[Document]:
+    """Page-level text. OCR only when the PDF has no text layer."""
+    pages = _pages(pdf_path, pdf_path.name)
     if pages:
         return pages
 
@@ -39,17 +44,9 @@ def extract_pages(pdf_path: Path) -> list[Document]:
             ["ocrmypdf", "--skip-text", "--deskew", "--clean", "--quiet", str(pdf_path), tmp_path],
             check=True,
         )
-        doc = pymupdf.open(tmp_path)
-        try:
-            for i, page in enumerate(doc, 1):
-                text = page.get_text().strip()
-                if text:
-                    pages.append(Document(text=text, metadata={"file_name": pdf_path.name, "page": i}))
-        finally:
-            doc.close()
+        return _pages(Path(tmp_path), pdf_path.name)
     finally:
         os.unlink(tmp_path)
-    return pages
 
 
 def main() -> int:
