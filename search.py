@@ -105,14 +105,22 @@ STOP = {
 }
 
 
+def _list_answer(query: str) -> str | None:
+    """Rows for a 'list all <entity>' request; None if no entity matches."""
+    for candidate in reversed(re.findall(r"\b([A-Za-z][A-Za-z0-9]+)\b", query)):
+        if candidate.lower() in STOP:
+            continue
+        result = list_all(candidate)
+        if result:
+            return result
+    return None
+
+
 def answer(query: str) -> str:
     if re.search(r"\blist all\b", query, re.I):
-        for candidate in reversed(re.findall(r"\b([A-Za-z][A-Za-z0-9]+)\b", query)):
-            if candidate.lower() in STOP:
-                continue
-            result = list_all(candidate)
-            if result:
-                return result
+        result = _list_answer(query)
+        if result:
+            return result
 
     hits = retrieve(query)
     context = "\n\n".join(f"[page {m['page']}] {d}" for d, m, _ in hits)

@@ -14,4 +14,11 @@ rows = search.list_all("DINESH")
 assert rows and rows.count("\n") >= 1
 assert rows.startswith("[p")
 
+# answer's list-all branch is LLM-free; proves that path without a model call.
+assert search.answer("list all DINESH").startswith("[p")
+assert search._list_answer("list all zzz") is None
+
+# Unknown entity: list-all yields "", and question falls back to retrieve.
+assert search.list_all("zzz") == ""
+
 print("self-check passed")
